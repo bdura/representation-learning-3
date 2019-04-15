@@ -43,14 +43,12 @@ class Discriminator(nn.Module):
         x = self.hidden_layers(x)
         x = self.output_layer(x)
 
-        x = self.sigmoid(x)
-
         return x
 
 
 class JensenShannon(Discriminator):
 
-    def __init__(self, input_dimension=2, hidden_dimension=10, n_hidden_layers=3, dropout=.1):
+    def __init__(self, input_dimension=2, hidden_dimension=10, n_hidden_layers=3, dropout=0):
 
         super(JensenShannon, self).__init__(
             input_dimension=input_dimension,
@@ -58,6 +56,13 @@ class JensenShannon(Discriminator):
             n_hidden_layers=n_hidden_layers,
             dropout=dropout
         )
+
+    def forward(self, x):
+
+        x = super().forward(x)
+        x = self.sigmoid(x)
+
+        return x
 
     def loss(self, f, g):
 
@@ -68,7 +73,10 @@ class JensenShannon(Discriminator):
 
         objective = objective_f / 2. + objective_g / 2.
 
-        return - objective
+        # Optimisers minimise a loss
+        loss = - objective
+
+        return loss
 
     def distance(self, f, g):
 
@@ -77,7 +85,7 @@ class JensenShannon(Discriminator):
 
 class Wasserstein(Discriminator):
 
-    def __init__(self, input_dimension=2, hidden_dimension=10, n_hidden_layers=3, dropout=.1, kappa=10):
+    def __init__(self, input_dimension=2, hidden_dimension=10, n_hidden_layers=3, dropout=0, kappa=10):
 
         super(Wasserstein, self).__init__(
             input_dimension=input_dimension,
@@ -112,19 +120,28 @@ class Wasserstein(Discriminator):
         penalty = (norm_gradient - 1).pow(2).mean()
 
         if penalised:
-            objective = objective_f - objective_g - penalty
+            objective = objective_f - objective_g - self.kappa * penalty
 
         else:
             objective = objective_f - objective_g
 
-        return - objective
+        loss = - objective
+
+        return loss
+
+    def distance(self, f, g):
+        return - self.loss(f, g, penalised=False)
 
 
 if __name__ == '__main__':
 
     w = Wasserstein()
 
-    f = torch.randn((20, 2))
-    g = torch.randn((20, 2))
+    f = 1. + torch.randn((20, 2))
+    g = 2 * torch.randn((20, 2))
 
-    w.loss(f, g)
+    loss = w.loss(f, g)
+
+    loss.backward()
+
+    print(w.input_layer)
