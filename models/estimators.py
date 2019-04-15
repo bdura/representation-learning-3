@@ -66,8 +66,6 @@ class JensenShannon(Discriminator):
 
     def loss(self, f, g):
 
-        assert f.size() == g.size(), 'The number of samples for P_f and P_g must be equal.'
-
         objective_f = self(f).log().mean()
         objective_g = (1 - self(g)).log().mean()
 
@@ -98,32 +96,28 @@ class Wasserstein(Discriminator):
 
     def loss(self, f, g, penalised=True):
 
-        assert f.size() == g.size(), 'The number of samples for P_f and P_g must be equal.'
-
         n = f.size(0)
         device = f.device
-
-        # Uniform distribution U[0, 1]
-        a = torch.rand((n, 1)).to(device)
 
         objective_f = self(f).mean()
         objective_g = self(g).mean()
 
-        z = a * f + (1 - a) * g
-        z.requires_grad_(True)
-
-        autograd.backward(self(z), z, create_graph=True)
-        gradient = z.grad
-
-        norm_gradient = torch.norm(gradient, p=2, dim=1)
-
-        penalty = (norm_gradient - 1).pow(2).mean()
+        objective = objective_f - objective_g
 
         if penalised:
-            objective = objective_f - objective_g - self.kappa * penalty
+            # Uniform distribution U[0, 1]
+            a = torch.rand((n, 1)).to(device)
 
-        else:
-            objective = objective_f - objective_g
+            z = a * f + (1 - a) * g
+            z.requires_grad_(True)
+
+            gradient = autograd.grad(self(z).sum(), z, create_graph=True)[0]
+
+            norm_gradient = torch.norm(gradient, dim=1)
+
+            penalty = (norm_gradient - 1).pow(2).mean()
+
+            objective = objective - self.kappa * penalty
 
         loss = - objective
 
@@ -131,17 +125,3 @@ class Wasserstein(Discriminator):
 
     def distance(self, f, g):
         return - self.loss(f, g, penalised=False)
-
-
-if __name__ == '__main__':
-
-    w = Wasserstein()
-
-    f = 1. + torch.randn((20, 2))
-    g = 2 * torch.randn((20, 2))
-
-    loss = w.loss(f, g)
-
-    loss.backward()
-
-    print(w.input_layer)
