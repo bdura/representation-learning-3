@@ -9,7 +9,6 @@ import numpy as np
 class Discriminator(nn.Module):
 
     def __init__(self, input_dimension=2, hidden_dimension=10, n_hidden_layers=3, dropout=.1):
-
         super(Discriminator, self).__init__()
 
         self.activation = nn.ReLU()
@@ -38,7 +37,6 @@ class Discriminator(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-
         x = self.input_layer(x)
         x = self.hidden_layers(x)
         x = self.output_layer(x)
@@ -49,7 +47,6 @@ class Discriminator(nn.Module):
 class JensenShannon(Discriminator):
 
     def __init__(self, input_dimension=2, hidden_dimension=10, n_hidden_layers=3, dropout=0):
-
         super(JensenShannon, self).__init__(
             input_dimension=input_dimension,
             hidden_dimension=hidden_dimension,
@@ -58,14 +55,12 @@ class JensenShannon(Discriminator):
         )
 
     def forward(self, x):
-
         x = super().forward(x)
         x = self.sigmoid(x)
 
         return x
 
     def loss(self, f, g):
-
         objective_f = self(f).log().mean()
         objective_g = (1 - self(g)).log().mean()
 
@@ -77,14 +72,12 @@ class JensenShannon(Discriminator):
         return loss
 
     def distance(self, f, g):
-
         return np.log(2) - self.loss(f, g)
 
 
 class Wasserstein(Discriminator):
 
     def __init__(self, input_dimension=2, hidden_dimension=10, n_hidden_layers=3, dropout=0, kappa=10):
-
         super(Wasserstein, self).__init__(
             input_dimension=input_dimension,
             hidden_dimension=hidden_dimension,
@@ -95,7 +88,6 @@ class Wasserstein(Discriminator):
         self.kappa = kappa
 
     def loss(self, f, g, penalised=True):
-
         n = f.size(0)
         device = f.device
 
