@@ -8,7 +8,7 @@ import numpy as np
 
 class Discriminator(nn.Module):
 
-    def __init__(self, input_dimension=2, hidden_dimension=10, n_hidden_layers=3, dropout=.1):
+    def __init__(self, input_dimension=2, hidden_dimension=10, n_hidden_layers=1, dropout=0):
         super(Discriminator, self).__init__()
 
         self.activation = nn.ReLU()
