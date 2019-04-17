@@ -38,6 +38,7 @@ class VariationalAutoEncoder(nn.Module):
         )
 
         self.reconstruction_criterion = nn.BCEWithLogitsLoss()
+        # self.reconstruction_criterion = nn.MSELoss()
         self.kappa = kappa
 
     def encode(self, x):
@@ -47,13 +48,15 @@ class VariationalAutoEncoder(nn.Module):
         x = x.squeeze()
 
         mean = self.encoder_mean(x)
-        logv = self.encoder_logv(x) + .001
+        logv = self.encoder_logv(x)
 
         return mean, logv
 
     def sample(self, mean, logv):
 
-        return mean + torch.randn_like(mean) * logv.exp()
+        sigma = torch.exp(.5 * logv) + .1e-8
+
+        return mean + torch.randn_like(mean) * sigma
 
     def decode(self, x):
 
@@ -78,19 +81,31 @@ class VariationalAutoEncoder(nn.Module):
     def loss(self, x, out, mean, logv):
 
         # Reconstruction loss
-        reconstruction = self.reconstruction_criterion(out, x)
+        reconstruction = self.reconstruction_criterion(out.view(-1, 784), x.view(-1, 784))
 
         print()
 
-        print('Loss', reconstruction.item())
-
         # KL Divergence
-        divergence = 0.5 * (- 1 - logv + mean.pow(2) + logv.exp()).sum(dim=1).mean()
+        divergence = 0.5 * (- 1 - logv + mean.pow(2) + logv.exp()).mean()
 
-        print('Divergence', divergence.item())
+        # print('Divergence', divergence.item())
 
         total_loss = reconstruction + self.kappa * divergence
 
         print('Total', total_loss.item())
 
         return total_loss
+
+    # def loss(self, recon_x, x, mu, logvar):
+    #     # reconstruction
+    #     BCE = nn.functional.binary_cross_entropy(recon_x, x.view(-1, 784), reduction='sum')
+    #
+    #     # see Appendix B from VAE paper:
+    #     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+    #     # https://arxiv.org/abs/1312.6114
+    #     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
+    #
+    #     # KL Divergence
+    #     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+    #
+    #     return BCE + KLD
