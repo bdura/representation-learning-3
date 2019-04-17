@@ -15,7 +15,6 @@ class Discriminator(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
         self.input_layer = nn.Sequential(
-            self.dropout,
             nn.Linear(input_dimension, hidden_dimension),
             self.activation
         )
@@ -61,6 +60,12 @@ class JensenShannon(Discriminator):
         return x
 
     def loss(self, f, g):
+        """
+
+        :param f: The distribution we want to associate one with
+        :param g: The distribution we want to associate zero with
+        :return:
+        """
         objective_f = self(f).log().mean()
         objective_g = (1 - self(g)).log().mean()
 
