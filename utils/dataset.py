@@ -10,10 +10,11 @@ class BinarizedMNIST(Dataset):
 
     def __init__(self, data_dir, split='train'):
         filename = os.path.join(data_dir, 'binarized_mnist_{}.amat'.format(split))
+
         self.data = np.loadtxt(filename)
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, item):
-        return torch.tensor(self.data[item])
+        return torch.tensor(self.data[item]).view(1, 28, 28).float()

@@ -4,7 +4,7 @@ from torch import nn
 
 class VariationalAutoEncoder(nn.Module):
 
-    def __init__(self, kappa=10.):
+    def __init__(self, kappa=1.):
 
         super(VariationalAutoEncoder, self).__init__()
 
@@ -37,15 +37,17 @@ class VariationalAutoEncoder(nn.Module):
             nn.Conv2d(16, 1, kernel_size=3, padding=2),
         )
 
-        self.reconstruction_criterion = nn.CrossEntropyLoss()
+        self.reconstruction_criterion = nn.BCEWithLogitsLoss()
         self.kappa = kappa
 
     def encode(self, x):
 
         x = self.encoder_layers(x)
 
+        x = x.squeeze()
+
         mean = self.encoder_mean(x)
-        logv = self.encoder_logv(x)
+        logv = self.encoder_logv(x) + .001
 
         return mean, logv
 
@@ -56,6 +58,9 @@ class VariationalAutoEncoder(nn.Module):
     def decode(self, x):
 
         x = self.decoder_input(x)
+
+        x = x.unsqueeze(2).unsqueeze(2)
+
         x = self.decoder_layers(x)
 
         return x
@@ -68,16 +73,24 @@ class VariationalAutoEncoder(nn.Module):
 
         out = self.decode(z)
 
-        return out
+        return out, mean, logv
 
     def loss(self, x, out, mean, logv):
 
         # Reconstruction loss
         reconstruction = self.reconstruction_criterion(out, x)
 
+        print()
+
+        print('Loss', reconstruction.item())
+
         # KL Divergence
         divergence = 0.5 * (- 1 - logv + mean.pow(2) + logv.exp()).sum(dim=1).mean()
 
+        print('Divergence', divergence.item())
+
         total_loss = reconstruction + self.kappa * divergence
+
+        print('Total', total_loss.item())
 
         return total_loss
