@@ -20,7 +20,6 @@ import models.vae
 
 
 def train(model, device, epoch, train_loader, optimiser, writer):
-
     model.train()
 
     counts = 0
@@ -53,7 +52,6 @@ def train(model, device, epoch, train_loader, optimiser, writer):
 
 
 def valid(model, device, epoch, valid_loader, writer):
-
     model.eval()
 
     counts = 0
@@ -85,7 +83,6 @@ def valid(model, device, epoch, valid_loader, writer):
 
 
 def main(model, test=False):
-
     writer = SummaryWriter('logs/vae')
 
     train_set = dataset.BinarizedMNIST(data_dir='../data/', split='train')
@@ -105,15 +102,55 @@ def main(model, test=False):
     optimiser = Adam(model.parameters(), lr=3e-4)
 
     for epoch in range(20):
-
         train(model, device, epoch, train_loader, optimiser, writer)
         valid(model, device, epoch, valid_loader, writer)
 
     torch.save(model.state_dict(), 'vae.pth')
 
 
+def ll_importance_sample_batch(minibatch, model, samples):
+    """
+
+    :param minibatch: tensor whose likelihood is to be evaluated shape : (size_minibatch, D)
+    :param model: a VAE
+    :param samples : number of importance samples per example
+    :return: the ll
+    """
+
+    with torch.no_grad:
+        mean, logv = model.encode(minibatch)
+        ll = 0
+        for k in minibatch:
+            ll += ll_importance_sample(minibatch[k], mean[k], logv[k], model)
+        return ll
+
+
+def ll_importance_sample(input, mean, logv, samples, model):
+    sigma = torch.exp(.5 * logv) + .1e-8
+    m = torch.distributions.normal.Normal(torch.tensor([0.0]), torch.tensor([1.0]))
+
+    # Sample hiddens and get proba for importance normalisation
+    samples_value_normal = torch.randn((samples, len(mean)))
+    proba_q = m.cdf(samples_value_normal)
+    aggregated_q = proba_q.log().sum(dim=1)
+
+    # Get prior proba of these hidden
+    value_z = mean + samples_value_normal * sigma
+    proba_prior_z = m.cdf(value_z)
+    aggregated_z = proba_prior_z.log().sum(dim=1)
+
+    # Get actual proba of data
+    estimated_conditional = model.decode(value_z)
+    proba_conditional = input * estimated_conditional + (1 - input) * (1 - estimated_conditional)
+    aggregated_cond = proba_conditional.log().sum(dim=1)
+
+    proba_points = (aggregated_z + aggregated_cond - aggregated_q).exp()
+    return proba_points.mean(dim=1)
+
+
 if __name__ == '__main__':
+    pass
 
-    vae = models.vae.VariationalAutoEncoder()
+    # vae = models.vae.VariationalAutoEncoder()
 
-    main(vae, test=False)
+    # main(vae, test=False)
