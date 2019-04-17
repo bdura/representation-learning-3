@@ -50,6 +50,7 @@ def train(model, device, epoch, train_loader, optimiser, writer):
             # print(running_loss / counts)
 
     writer.add_scalar('train/epoch-loss', running_loss / counts, epoch)
+    print(running_loss / counts)
 
 
 def valid(model, device, epoch, valid_loader, writer):
@@ -88,12 +89,8 @@ def main(model, test=False):
 
     writer = SummaryWriter('logs/vae')
 
-    train_set = dataset.BinarizedMNIST(data_dir='../data/', split='train')
-    valid_set = dataset.BinarizedMNIST(data_dir='../data/', split='valid')
-
-    if test:
-        train_set = Subset(train_set, indices=np.arange(200))
-        valid_set = Subset(valid_set, indices=np.arange(200))
+    train_set = dataset.BinarizedMNIST(data_dir='../data/', split='train', test=test)
+    valid_set = dataset.BinarizedMNIST(data_dir='../data/', split='valid', test=test)
 
     train_loader = DataLoader(train_set, batch_size=128, shuffle=True, num_workers=10)
     valid_loader = DataLoader(valid_set, batch_size=128, shuffle=True, num_workers=10)
@@ -102,9 +99,9 @@ def main(model, test=False):
 
     model = model.to(device)
 
-    optimiser = Adam(model.parameters(), lr=3e-4)
+    optimiser = Adam(model.parameters(), lr=1e-5)
 
-    for epoch in range(20):
+    for epoch in range(200):
 
         train(model, device, epoch, train_loader, optimiser, writer)
         valid(model, device, epoch, valid_loader, writer)
@@ -116,4 +113,4 @@ if __name__ == '__main__':
 
     vae = models.vae.VariationalAutoEncoder()
 
-    main(vae, test=False)
+    main(vae, test=True)
