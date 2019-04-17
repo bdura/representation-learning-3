@@ -8,3 +8,5 @@
 .autoenv_leave.zsh
 
 notebooks/output/
+
+__pycache__/
