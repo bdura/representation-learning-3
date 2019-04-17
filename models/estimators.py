@@ -77,7 +77,7 @@ class JensenShannon(Discriminator):
 
 class Wasserstein(Discriminator):
 
-    def __init__(self, input_dimension=2, hidden_dimension=10, n_hidden_layers=3, dropout=0, kappa=10):
+    def __init__(self, input_dimension=2, hidden_dimension=20, n_hidden_layers=1, dropout=0, kappa=10):
         super(Wasserstein, self).__init__(
             input_dimension=input_dimension,
             hidden_dimension=hidden_dimension,
