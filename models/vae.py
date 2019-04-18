@@ -36,8 +36,12 @@ class VariationalAutoEncoder(nn.Module):
             nn.Conv2d(16, 1, kernel_size=3, padding=2),
         )
 
+
         # self.reconstruction_criterion = nn.BCEWithLogitsLoss()
         self.reconstruction_criterion = nn.MSELoss()
+
+
+        self.sigmoid = nn.Sigmoid()
         self.kappa = kappa
 
     def encode(self, x):
@@ -51,7 +55,8 @@ class VariationalAutoEncoder(nn.Module):
         return mean, logv
 
     def sample(self, mean, logv):
-        sigma = 1 / 10 * torch.exp(.5 * logv) + .1e-4
+
+        sigma = torch.exp(.5 * logv) + .1e-4
 
         # print(mean.size())
         # print('means', mean[0])
@@ -59,6 +64,9 @@ class VariationalAutoEncoder(nn.Module):
         # print((mean + torch.randn_like(mean) * sigma)[0])
         # print(mean[0,0].item(), logv[0,0].item())
         # return mean + torch.randn_like(mean) / 10
+
+        sigma = torch.exp(.5 * logv)
+
         return mean + torch.randn_like(mean) * sigma
 
     def decode(self, x):
@@ -67,6 +75,7 @@ class VariationalAutoEncoder(nn.Module):
         x = x.unsqueeze(2).unsqueeze(2)
 
         x = self.decoder_layers(x)
+        x = self.sigmoid(x)
 
         return x
 
@@ -81,6 +90,7 @@ class VariationalAutoEncoder(nn.Module):
 
     def loss(self, x, out, mean, logv):
         # Reconstruction loss
+
         reconstruction = self.reconstruction_criterion(out.view(-1, 784), x.view(-1, 784))
 
         # print()
@@ -116,3 +126,4 @@ class VariationalAutoEncoder(nn.Module):
     #     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
     #
     #     return BCE + KLD
+
