@@ -17,6 +17,7 @@ from utils import dataset
 from tensorboardX import SummaryWriter
 
 import models.vae
+import time
 
 
 def train(model, device, epoch, train_loader, optimiser, writer):
@@ -24,8 +25,10 @@ def train(model, device, epoch, train_loader, optimiser, writer):
 
     counts = 0
     running_loss = 0.
+    start_time = time.time()
 
     for i, data in enumerate(train_loader):
+        data = data.to(device)
 
         n = data.size(0)
 
@@ -35,19 +38,25 @@ def train(model, device, epoch, train_loader, optimiser, writer):
 
         out, mean, logv = model(data)
 
-        loss = model.loss(data, out, mean, logv)
+        loss, div, rec, norm = model.loss(data, out, mean, logv)
         loss.backward()
         optimiser.step()
+        optimiser.zero_grad()
 
         running_loss += loss.item() * n
 
+        if i % 20 == 0:
+            time_elapsed = time.time() - start_time
+            print(f"loss = {loss.item()}, div = {div}, rec = {rec}, norm = {norm}, time 20 batch = {time_elapsed}")
+
+        """
         if i % int(len(train_loader) ** .5) or i == len(train_loader) - 1:
             step = epoch * len(train_loader) + i
 
             # Loss
             writer.add_scalar('train/loss', running_loss / counts, step)
             # print(running_loss / counts)
-
+        """
     writer.add_scalar('train/epoch-loss', running_loss / counts, epoch)
 
 
@@ -60,6 +69,7 @@ def valid(model, device, epoch, valid_loader, writer):
     with torch.no_grad():
 
         for i, data in enumerate(valid_loader):
+            data = data.to(device)
 
             n = data.size(0)
 
@@ -150,7 +160,17 @@ def ll_importance_sample(input, mean, logv, samples, model):
 
 if __name__ == '__main__':
     pass
+    # model = models.vae.VariationalAutoEncoder()
+    # main(model, test=False)
 
-    # vae = models.vae.VariationalAutoEncoder()
+    '''
+    
+    import models.vae
+    model = models.vae.VariationalAutoEncoder()
+    model = model.to(device)
 
-    # main(vae, test=False)
+    for epoch in range(20):
+        train(model, device, epoch, train_loader, optimiser, writer)
+        valid(model, device, epoch, valid_loader, writer)
+        
+    '''

@@ -5,7 +5,6 @@ from torch import nn
 class VariationalAutoEncoder(nn.Module):
 
     def __init__(self, kappa=1.):
-
         super(VariationalAutoEncoder, self).__init__()
 
         self.activation = nn.ELU()
@@ -37,12 +36,11 @@ class VariationalAutoEncoder(nn.Module):
             nn.Conv2d(16, 1, kernel_size=3, padding=2),
         )
 
-        self.reconstruction_criterion = nn.BCEWithLogitsLoss()
-        # self.reconstruction_criterion = nn.MSELoss()
+        # self.reconstruction_criterion = nn.BCEWithLogitsLoss()
+        self.reconstruction_criterion = nn.MSELoss()
         self.kappa = kappa
 
     def encode(self, x):
-
         x = self.encoder_layers(x)
 
         x = x.squeeze()
@@ -53,13 +51,17 @@ class VariationalAutoEncoder(nn.Module):
         return mean, logv
 
     def sample(self, mean, logv):
+        sigma = 1 / 10 * torch.exp(.5 * logv) + .1e-4
 
-        sigma = torch.exp(.5 * logv) + .1e-8
-
+        # print(mean.size())
+        # print('means', mean[0])
+        # print('sigmas', sigma[0])
+        # print((mean + torch.randn_like(mean) * sigma)[0])
+        # print(mean[0,0].item(), logv[0,0].item())
+        # return mean + torch.randn_like(mean) / 10
         return mean + torch.randn_like(mean) * sigma
 
     def decode(self, x):
-
         x = self.decoder_input(x)
 
         x = x.unsqueeze(2).unsqueeze(2)
@@ -69,7 +71,6 @@ class VariationalAutoEncoder(nn.Module):
         return x
 
     def forward(self, x):
-
         mean, logv = self.encode(x)
 
         z = self.sample(mean, logv)
@@ -79,22 +80,28 @@ class VariationalAutoEncoder(nn.Module):
         return out, mean, logv
 
     def loss(self, x, out, mean, logv):
-
         # Reconstruction loss
         reconstruction = self.reconstruction_criterion(out.view(-1, 784), x.view(-1, 784))
 
-        print()
+        # print()
 
         # KL Divergence
         divergence = 0.5 * (- 1 - logv + mean.pow(2) + logv.exp()).mean()
+        # divergence = 0.5 * (- 1 + mean.pow(2)).mean()
 
         # print('Divergence', divergence.item())
 
+        # total_loss =  self.kappa * divergence
+
+        # norm = torch.norm(self.encoder_logv.weight)
+        # total_loss = reconstruction + self.kappa * divergence + 5 * norm
+
         total_loss = reconstruction + self.kappa * divergence
 
-        print('Total', total_loss.item())
+        # print('Total', total_loss.item())
+        # raise(ValueError('Debugging'))
 
-        return total_loss
+        return total_loss, divergence.item(), reconstruction.item(), 0
 
     # def loss(self, recon_x, x, mu, logvar):
     #     # reconstruction
