@@ -39,7 +39,7 @@ def train(model, device, epoch, train_loader, optimiser, writer):
 
         out, mean, logv = model(data)
 
-        loss, div, rec, norm = model.loss(data, out, mean, logv)
+        loss, div, rec = model.loss(data, out, mean, logv)
         loss.backward()
         optimiser.step()
         optimiser.zero_grad()
@@ -48,7 +48,7 @@ def train(model, device, epoch, train_loader, optimiser, writer):
 
         if i % 20 == 0:
             time_elapsed = time.time() - start_time
-            print(f"loss = {loss.item()}, div = {div}, rec = {rec}, norm = {norm}, time 20 batch = {time_elapsed}")
+            print(f"loss = {loss.item()}, div = {div}, rec = {rec}, time 20 batch = {time_elapsed}")
 
         """
         if i % int(len(train_loader) ** .5) or i == len(train_loader) - 1:
@@ -109,7 +109,7 @@ def main(model, test=False):
 
     model = model.to(device)
 
-    optimiser = Adam(model.parameters(), lr=1e-5)
+    optimiser = Adam(model.parameters(), lr=1e-4)
 
     for epoch in range(200):
 

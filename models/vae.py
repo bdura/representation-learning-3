@@ -96,13 +96,10 @@ class VariationalAutoEncoder(nn.Module):
         # print()
 
         # KL Divergence
-        divergence = 0.5 * (- 1 - logv + mean.pow(2) + logv.exp()).mean()
+        divergence = 0.5 * (- 1 - logv + mean.pow(2) + logv.exp() ).mean()
         # divergence = 0.5 * (- 1 + mean.pow(2)).mean()
-
         # print('Divergence', divergence.item())
-
         # total_loss =  self.kappa * divergence
-
         # norm = torch.norm(self.encoder_logv.weight)
         # total_loss = reconstruction + self.kappa * divergence + 5 * norm
 
@@ -111,7 +108,7 @@ class VariationalAutoEncoder(nn.Module):
         # print('Total', total_loss.item())
         # raise(ValueError('Debugging'))
 
-        return total_loss, divergence.item(), reconstruction.item(), 0
+        return total_loss, divergence.item(), reconstruction.item()
 
     # def loss(self, recon_x, x, mu, logvar):
     #     # reconstruction
