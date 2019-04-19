@@ -5,12 +5,10 @@ sys.path.append(os.path.abspath('../'))
 
 del sys, os
 
-import numpy as np
-
 import torch
 from torch.optim import Adam
 
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 
 from utils import dataset
 
@@ -21,7 +19,6 @@ import time
 
 
 def train(model, device, epoch, train_loader, optimiser, writer):
-
     model.train()
 
     counts = 0
@@ -35,8 +32,6 @@ def train(model, device, epoch, train_loader, optimiser, writer):
 
         counts += n
 
-        data = data.to(device)
-
         out, mean, logv = model(data)
 
         loss, div, rec = model.loss(data, out, mean, logv)
@@ -48,7 +43,8 @@ def train(model, device, epoch, train_loader, optimiser, writer):
 
         if i % 20 == 0:
             time_elapsed = time.time() - start_time
-            print(f"loss = {loss.item()}, div = {div}, rec = {rec}, time 20 batch = {time_elapsed}")
+            print("loss = {}, div = {}, rec = {}, time = {}, batch = {}".format(loss.item(), div, rec,
+                                                                                time_elapsed, i // 20))
 
         """
         if i % int(len(train_loader) ** .5) or i == len(train_loader) - 1:
@@ -63,7 +59,6 @@ def train(model, device, epoch, train_loader, optimiser, writer):
 
 
 def valid(model, device, epoch, valid_loader, writer):
-
     model.eval()
 
     counts = 0
@@ -82,7 +77,7 @@ def valid(model, device, epoch, valid_loader, writer):
 
             out, mean, logv = model(data)
 
-            loss = model.loss(data, out, mean, logv)
+            loss, div, rec = model.loss(data, out, mean, logv)
 
             running_loss += loss.item() * n
 
@@ -96,7 +91,6 @@ def valid(model, device, epoch, valid_loader, writer):
 
 
 def main(model, test=False):
-
     writer = SummaryWriter('logs/vae')
 
     train_set = dataset.BinarizedMNIST(data_dir='../data/', split='train', test=test)
@@ -109,10 +103,9 @@ def main(model, test=False):
 
     model = model.to(device)
 
-    optimiser = Adam(model.parameters(), lr=1e-4)
+    optimiser = Adam(model.parameters(), lr=3e-4)
 
-    for epoch in range(200):
-
+    for epoch in range(20):
         train(model, device, epoch, train_loader, optimiser, writer)
         valid(model, device, epoch, valid_loader, writer)
 
@@ -150,7 +143,6 @@ def ll_importance_sample_batch(batch, model, samples, device):
         # Forward pass these hidden values and get the probability of the observed values using the model
         cond_proba = list()
         for i in range(value_z.size()[1]):
-
             # Do this for each original points, for all samples
             estimated_conditional_point = model.decode(value_z[:, i, :]).view(-1, 784)
             # We get a (samples, 784) tensor
@@ -177,19 +169,5 @@ def ll_importance_sample_batch(batch, model, samples, device):
 
 
 if __name__ == '__main__':
-    pass
-    # model = models.vae.VariationalAutoEncoder()
-    # main(model, test=False)
-
-    '''
-    
-    import models.vae
     model = models.vae.VariationalAutoEncoder()
-    model = model.to(device)
-
-    for epoch in range(20):
-        train(model, device, epoch, train_loader, optimiser, writer)
-        valid(model, device, epoch, valid_loader, writer)
-        
-    '''
-
+    main(model, test=False)
