@@ -52,7 +52,7 @@ def ll_importance_sample_batch(batch, model, samples):
         proba_points = (aggregated_z + cond_proba_tensor - aggregated_q).exp()
 
         # Average over the samples
-        proba_points.mean(dim=0)
+        proba_points = proba_points.mean(dim=0)
 
         # Return result
     return proba_points
@@ -63,19 +63,34 @@ def main(model, test=False):
     valid_loader = DataLoader(valid_set, batch_size=64, shuffle=True, num_workers=10)
 
     test_set = dataset.BinarizedMNIST(data_dir='../data/', split='test', test=test)
-    test_loader = DataLoader(valid_set, batch_size=64, shuffle=True, num_workers=10)
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    test_loader = DataLoader(test_set, batch_size=64, shuffle=True, num_workers=10)
 
     model = model.to(device)
-
+    avg_valid_likelihood = 0.
+    avg_test_likelihood = 0.
+    counts = 0.
     for i, batch in enumerate(valid_loader):
-        batch.to(device)
+        batch = batch.to(device)
         prob = ll_importance_sample_batch(batch, model, samples=200)
-        print(prob.shape)
+        avg_valid_likelihood += prob.sum()
+        counts += prob.shape[0]
+
+    avg_valid_likelihood /= counts
+    counts = 0.
+    for i, batch in enumerate(test_loader):
+        batch = batch.to(device)
+        prob = ll_importance_sample_batch(batch, model, samples=200)
+        avg_test_likelihood += prob.sum()
+        counts += prob.shape[0]
+
+    avg_test_likelihood /= counts
+    print("Average log-likelihood on validation set: {}".format(avg_valid_likelihood))
+    print("Average log-likelihood on test set: {}".format(avg_test_likelihood))
 
 
 if __name__ == '__main__':
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    map = ('cpu' if device == torch.device('cpu') else None)
     model = models.vae.VariationalAutoEncoder()
-    model.load_state_dict(torch.load('vae.pth', map_location='cpu'))
+    model.load_state_dict(torch.load('vae.pth', map_location=map))
     main(model, test=True)
