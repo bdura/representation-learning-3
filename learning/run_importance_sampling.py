@@ -55,7 +55,7 @@ def ll_importance_sample_batch(batch, model, samples):
         proba_points = proba_points.mean(dim=0)
 
         # Return result
-    return proba_points
+    return proba_points.log()
 
 
 def main(model, test=False):
