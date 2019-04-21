@@ -6,34 +6,37 @@ import base.classify_svhn as data_utils
 
 
 class GAN(nn.Module):
-    def __init__(self, critic=est.Wasserstein()):
+    def __init__(self,
+                 critic=est.Wasserstein(input_dimension=256, hidden_dimension=100, n_hidden_layers=0, image=True)):
         super(GAN, self).__init__()
         # TODO : corriger architecture pour SVHN
         self.critic = critic
+        self.linear_layer = nn.Sequential(nn.Linear(100, 256),
+                                          nn.ELU())
+
         self.generator = nn.Sequential(
-            nn.Linear(100, 256),
-            self.activation,
             nn.Conv2d(256, 64, kernel_size=5, padding=4),
-            self.activation,
+            nn.ELU(),
             nn.UpsamplingBilinear2d(scale_factor=2),
             nn.Conv2d(64, 32, kernel_size=3, padding=2),
-            self.activation,
+            nn.ELU(),
             nn.UpsamplingBilinear2d(scale_factor=2),
             nn.Conv2d(32, 16, kernel_size=3, padding=2),
-            self.activation,
+            nn.ELU(),
             nn.Conv2d(16, 1, kernel_size=3, padding=2)
         )
 
     def forward(self, batch_size):
         sample = torch.randn(size=(batch_size, 100))
+        sample = self.linear_layer(sample).unsqueeze(2).unsqueeze(2)
         generated = self.generator(sample)
         return generated
 
     def fit(self, num_epochs, device, batch_size):
         self.train()
         discriminator_optim, generator_optim = optim.Adam(params=self.critic.parameters()), optim.Adam(
-            params=self.generator.parameters())
-        train_loader, valid_loader, test_loader = data_utils.get_data_loader("svhn", batch_size)
+            params=[{'params': self.generator.parameters()}, {'params': self.linear_layer.parameters()}])
+        train_loader = data_utils.get_data_loader("svhn", batch_size)
         # TODO gérer les loaders valid, test...
         # TODO monitor training (e.g. générer images, metrics)
         for epoch in range(num_epochs):
@@ -61,7 +64,7 @@ class GAN(nn.Module):
                 generator_optim.zero_grad()
 
 
-if __name__ == "main":
+if __name__ == '__main__':
     gan = GAN()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    gan.fit(5, device, 32)
+    gan.fit(5, device, 64)

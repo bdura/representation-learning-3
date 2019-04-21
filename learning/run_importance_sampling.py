@@ -52,15 +52,12 @@ def ll_importance_sample_batch(batch, model, samples):
 
         ###
         proba_points = aggregated_z + cond_proba_tensor - aggregated_q
-        proba_points_bis = aggregated_z + cond_proba_tensor - aggregated_q
 
         m = torch.min(proba_points, dim=0, keepdim=False)[0]
         proba_points = (proba_points - m).exp()
 
         # Average over the samples
         proba_points = proba_points.mean(dim=0).log() + m
-
-
 
         # Return result
     return proba_points

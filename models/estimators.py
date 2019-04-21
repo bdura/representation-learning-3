@@ -8,16 +8,30 @@ import numpy as np
 
 class Discriminator(nn.Module):
 
-    def __init__(self, input_dimension=2, hidden_dimension=10, n_hidden_layers=1, dropout=0):
+    def __init__(self, input_dimension=2, hidden_dimension=10, n_hidden_layers=1, dropout=0, image=False):
         super(Discriminator, self).__init__()
 
         self.activation = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
-
-        self.input_layer = nn.Sequential(
-            nn.Linear(input_dimension, hidden_dimension),
-            self.activation
-        )
+        self.image = image
+        if image:
+            self.input_layer = nn.Sequential(
+                nn.Conv2d(3, 32, kernel_size=3),
+                self.activation,
+                nn.AvgPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(32, 64, kernel_size=3),
+                self.activation,
+                nn.AvgPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(64, 256, kernel_size=6),
+                self.activation
+            )
+            self.lin_layer = nn.Sequential(nn.Linear(input_dimension, hidden_dimension),
+                                           self.activation)
+        else:
+            self.input_layer = nn.Sequential(
+                nn.Linear(input_dimension, hidden_dimension),
+                self.activation
+            )
 
         self.hidden_layers = nn.Sequential(*[
             nn.Sequential(
@@ -38,6 +52,9 @@ class Discriminator(nn.Module):
     def forward(self, x):
         x = self.input_layer(x)
         x = self.hidden_layers(x)
+        if self.image:
+            x = x.squeeze()
+            x = self.lin_layer(x)
         x = self.output_layer(x)
 
         return x
@@ -82,12 +99,13 @@ class JensenShannon(Discriminator):
 
 class Wasserstein(Discriminator):
 
-    def __init__(self, input_dimension=2, hidden_dimension=20, n_hidden_layers=1, dropout=0, kappa=10):
+    def __init__(self, input_dimension=2, hidden_dimension=20, n_hidden_layers=1, dropout=0, kappa=10, image=False):
         super(Wasserstein, self).__init__(
             input_dimension=input_dimension,
             hidden_dimension=hidden_dimension,
             n_hidden_layers=n_hidden_layers,
-            dropout=dropout
+            dropout=dropout,
+            image=image
         )
 
         self.kappa = kappa
