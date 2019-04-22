@@ -11,7 +11,6 @@ import models.estimators as est
 import torch.optim as optim
 import base.classify_svhn as data_utils
 import warnings
-import random
 import numpy as np
 from tensorboardX import SummaryWriter
 from torch.nn.functional import sigmoid
@@ -103,11 +102,12 @@ class GAN(nn.Module):
 
         torch.save(self.state_dict(), '../learning/gan.pth')
 
-    def perturb(self, epsilon):
-        sample_vanilla = torch.randn(size=(1, 100)).to(self.device)
+    def perturb(self, idx, std):
+
+        sample_vanilla = torch.randn(size=(1, 100))
         sample_perturbation = sample_vanilla.clone()
 
-        idx = random.sample(range(100), k=1)[0]
+        epsilon = torch.randn(1) * std
         sample_perturbation[0, idx] += epsilon
 
         sample_vanilla = self.linear_layer(sample_vanilla).unsqueeze(2).unsqueeze(2)
@@ -115,6 +115,9 @@ class GAN(nn.Module):
 
         generated_vanilla = self.generator(sample_vanilla)
         generated_perturbation = self.generator(sample_perturbation)
+
+        generated_vanilla = (generated_vanilla / 2.0) + 0.5
+        generated_perturbation = (generated_perturbation / 2.0) + 0.5
 
         return generated_vanilla, generated_perturbation
 
@@ -132,12 +135,13 @@ class GAN(nn.Module):
 
         gz0 = self.generator(self.linear_layer(z0).unsqueeze(2).unsqueeze(2))
         gz1 = self.generator(self.linear_layer(z1).unsqueeze(2).unsqueeze(2))
-        
+
         interpolation_image = [
             alpha * gz0 + (1 - alpha) * gz1 for alpha in alphas
         ]
 
         return interpolation_latent, interpolation_image
+
 
 if __name__ == '__main__':
     writer = SummaryWriter('../learning/logs/gan')
