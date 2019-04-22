@@ -79,6 +79,18 @@ class VariationalAutoEncoder(nn.Module):
 
         return mean, logv
 
+    def perturb(self, idx, std):
+        vec = torch.randn(size=(1, 100))
+        zeros = torch.zeros_like(vec)
+        epsilon = torch.randn(1) * std
+        zeros[0, idx] = epsilon
+        perturbed_vec = vec + zeros
+        sample = self.decode(vec)
+        sample = (sample / 2.0) + 0.5
+        perturbed_sample = self.decode(perturbed_vec)
+        perturbed_sample = (perturbed_sample / 2.0) + 0.5
+        return sample.squeeze(0), perturbed_sample.squeeze(0)
+
     def sample_image(self, device):
         code = torch.randn((1, 100)).to(device)
         sample = self.decode(code)

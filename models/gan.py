@@ -19,7 +19,7 @@ from torchvision.transforms import Compose, Normalize
 
 
 class GAN(nn.Module):
-    def __init__(self, device,
+    def __init__(self, device=torch.device('cpu'),
                  critic=est.Wasserstein(input_dimension=256, hidden_dimension=100, n_hidden_layers=0, image=True)):
         super(GAN, self).__init__()
         self.critic = critic
@@ -72,14 +72,14 @@ class GAN(nn.Module):
 
                 # Control generator update frequency
                 if unroll_counter == 0:
-                    gen_loss = - self.critic.loss(inputs, fake_batch)
+                    gen_loss = self.critic.distance(inputs, fake_batch)
                     gen_loss.backward()
                     generator_optim.step()
 
                 discriminator_optim.zero_grad()
                 generator_optim.zero_grad()
 
-                if i % 20 == 0:
+                if i % 20 == 0 and i > 0:
                     out_real = sigmoid(self.critic(inputs))
                     out_fake = sigmoid(self.critic(fake_batch))
                     fake_labels = torch.zeros_like(out_fake)
@@ -96,7 +96,6 @@ class GAN(nn.Module):
                     writer.add_scalar('train/WGAN-penalty', gen_loss, step)
 
                     # Sample, log and save images
-                    print(self(batch_size=1).shape)
                     image_sample = inv_normalize(self(batch_size=1).squeeze(0))
                     writer.add_image('Generator samples', image_sample, step)
 
@@ -104,7 +103,7 @@ class GAN(nn.Module):
 
         torch.save(self.state_dict(), '../learning/gan.pth')
 
-    def perturbation(self, epsilon):
+    def perturb(self, epsilon):
         sample_vanilla = torch.randn(size=(1, 100)).to(self.device)
         sample_perturbation = sample_vanilla.clone()
 
@@ -130,7 +129,6 @@ class GAN(nn.Module):
 
             z2 = self.linear_layer(z2).unsqueeze(2).unsqueeze(2)
             generated = self.generator(z2)
-
 
 
 if __name__ == '__main__':
