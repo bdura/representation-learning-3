@@ -10,3 +10,5 @@
 notebooks/output/
 interactive.pbs
 __pycache__/
+/scripts/logs/
+/run.pbs

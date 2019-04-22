@@ -59,8 +59,7 @@ class GAN(nn.Module):
                 fake_batch = self(batch_size=inputs.shape[0])
 
                 # Compute losses
-                disc_loss = self.critic.loss(inputs, fake_batch)
-                gen_loss = -disc_loss
+                disc_loss = self.critic.loss(inputs, fake_batch.detach())
 
                 # Backprop discriminator, generator
                 disc_loss.backward(retain_graph=True)
@@ -71,6 +70,7 @@ class GAN(nn.Module):
 
                 # Control generator update frequency
                 if unroll_counter == 0:
+                    gen_loss = - self.critic.loss(inputs, fake_batch)
                     gen_loss.backward()
                     generator_optim.step()
 
