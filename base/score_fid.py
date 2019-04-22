@@ -13,6 +13,7 @@ import torch
 import base.classify_svhn as classify_svhn
 from base.classify_svhn import Classifier
 import numpy as np
+import scipy as scipy
 
 SVHN_PATH = "svhn"
 PROCESS_BATCH_SIZE = 32
@@ -101,7 +102,7 @@ def calculate_fid_score(sample_feature_iterator,
     mu_p = np.mean(concatenated_testset_features, axis=1)
     sigma_p = np.cov(concatenated_testset_features)
 
-    return np.linalg.norm(mu_p-mu_q)**2 + np.trace(sigma_p+sigma_q-2*(np.matmul(sigma_p, sigma_q)**0.5))
+    return round(np.real(np.linalg.norm(mu_p-mu_q)**2 + np.trace(sigma_p+sigma_q-2*scipy.linalg.sqrtm(np.matmul(sigma_p, sigma_q))), 3))
 
 
 if __name__ == "__main__":
