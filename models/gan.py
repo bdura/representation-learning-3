@@ -44,7 +44,7 @@ class GAN(nn.Module):
         generated = self.generator(sample)
         return generated
 
-    def fit(self, train_loader, num_epochs, device, writer, n_unrolls=3):
+    def fit(self, train_loader, num_epochs, device, writer, n_unrolls=5):
         self.train()
         inv_normalize = Compose([Normalize(mean=(0., 0., 0.), std=(2., 2., 2.)),
                                  Normalize(mean=(-0.5, -0.5, -0.5), std=(1., 1., 1.))
@@ -148,6 +148,6 @@ if __name__ == '__main__':
     warnings.filterwarnings("ignore", category=UserWarning)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     gan = GAN(device).to(device)
-    batch_size = 64
+    batch_size = 128
     train_loader, valid_loader, test_loader = data_utils.get_data_loader("svhn", batch_size)
-    gan.fit(train_loader, 20, device, writer)
+    gan.fit(train_loader, 50, device, writer)

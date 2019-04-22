@@ -84,7 +84,7 @@ def valid(model, device, epoch, valid_loader, writer):
         print('loss: ', running_loss / counts)
 
 
-def main(model, train_loader, valid_loader, name='vae'):
+def main(model, num_epochs, train_loader, valid_loader, name='vae'):
     writer = SummaryWriter('logs/' + name)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -93,7 +93,7 @@ def main(model, train_loader, valid_loader, name='vae'):
 
     optimiser = Adam(model.parameters(), lr=3e-4)
 
-    for epoch in range(20):
+    for epoch in range(num_epochs):
         train(model, device, epoch, train_loader, optimiser, writer)
         valid(model, device, epoch, valid_loader, writer)
 
@@ -136,4 +136,4 @@ if __name__ == '__main__':
         model.load_state_dict(torch.load('vae.pth', map_location=map))
         main_eval(model, test=test)
     else:
-        main(model, train_loader, valid_loader, name=name)
+        main(model, 40, train_loader, valid_loader, name=name)

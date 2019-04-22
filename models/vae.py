@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from torchvision.transforms import Compose, Normalize
+import numpy as np
 
 
 class VariationalAutoEncoder(nn.Module):
@@ -93,21 +93,21 @@ class VariationalAutoEncoder(nn.Module):
 
     def interpolation(self):
 
-        z0 = torch.randn(size=(1, 100)).to(self.device)
-        z1 = torch.randn(size=(1, 100)).to(self.device)
+        z0 = torch.randn(size=(1, 100))
+        z1 = torch.randn(size=(1, 100))
 
         alphas = np.linspace(0., 1., 11)
 
         interpolation_latent = [
-            (self.decode(alpha * z0 + (1 - alpha) * z1) / 2.0) + 0.5
+            ((self.decode(alpha * z0 + (1 - alpha) * z1) / 2.0) + 0.5).squeeze(0)
             for alpha in alphas
         ]
 
-        gz0 = self.decode(z0)
-        gz1 = self.decode(z1)
+        gz0 = ((self.decode(z0) / 2.0) + 0.5).squeeze(0)
+        gz1 = ((self.decode(z1) / 2.0) + 0.5).squeeze(0)
 
         interpolation_image = [
-            ((alpha * gz0 + (1 - alpha) * gz1) / 2.0) + 0.5 for alpha in alphas
+            (alpha * gz0 + (1 - alpha) * gz1) for alpha in alphas
         ]
 
         return interpolation_latent, interpolation_image
