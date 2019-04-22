@@ -129,7 +129,7 @@ class GAN(nn.Module):
         alphas = np.linspace(0., 1., 11)
 
         interpolation_latent = [
-            self.generator(self.linear_layer(alpha * z0 + (1 - alpha) * z1).unsqueeze(2).unsqueeze(2))
+            (self.generator(self.linear_layer(alpha * z0 + (1 - alpha) * z1).unsqueeze(2).unsqueeze(2)) / 2.0) + 0.5
             for alpha in alphas
         ]
 
@@ -137,7 +137,7 @@ class GAN(nn.Module):
         gz1 = self.generator(self.linear_layer(z1).unsqueeze(2).unsqueeze(2))
 
         interpolation_image = [
-            alpha * gz0 + (1 - alpha) * gz1 for alpha in alphas
+            ((alpha * gz0 + (1 - alpha) * gz1) / 2.0) + 0.5 for alpha in alphas
         ]
 
         return interpolation_latent, interpolation_image
