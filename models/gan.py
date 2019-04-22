@@ -12,6 +12,7 @@ import torch.optim as optim
 import base.classify_svhn as data_utils
 import warnings
 import random
+import numpy as np
 from tensorboardX import SummaryWriter
 from torch.nn.functional import sigmoid
 from torchvision.transforms import Compose, Normalize
@@ -117,6 +118,19 @@ class GAN(nn.Module):
         generated_perturbation = self.generator(sample_perturbation)
 
         return generated_vanilla, generated_perturbation
+
+    def interpolation(self):
+
+        z0 = torch.randn(size=(1, 100)).to(self.device)
+        z1 = torch.randn(size=(1, 100)).to(self.device)
+
+        alphas = np.linspace(0., 1., 11)
+        for alpha in alphas:
+            z2 = alpha * z0 + (1 - alpha) * z1
+
+            z2 = self.linear_layer(z2).unsqueeze(2).unsqueeze(2)
+            generated = self.generator(z2)
+
 
 
 if __name__ == '__main__':
