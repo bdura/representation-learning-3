@@ -94,7 +94,7 @@ class JensenShannon(Discriminator):
         return loss
 
     def distance(self, f, g):
-        return np.log(2) - self.loss(f, g)
+        return np.log(2) - self.loss(f, g).detach().numpy()
 
 
 class Wasserstein(Discriminator):

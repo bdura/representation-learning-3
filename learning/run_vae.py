@@ -9,7 +9,7 @@ import torch
 from torch.optim import Adam
 
 from torch.utils.data import DataLoader
-
+import base.classify_svhn as data_utils
 from utils import dataset
 
 from tensorboardX import SummaryWriter
@@ -25,7 +25,7 @@ def train(model, device, epoch, train_loader, optimiser, writer):
     running_loss = 0.
     start_time = time.time()
 
-    for i, data in enumerate(train_loader):
+    for i, (data, _) in enumerate(train_loader):
         data = data.to(device)
 
         n = data.size(0)
@@ -45,7 +45,6 @@ def train(model, device, epoch, train_loader, optimiser, writer):
             time_elapsed = time.time() - start_time
             print("loss = {}, div = {}, rec = {}, time = {}, batch = {}".format(loss.item(), div, rec,
                                                                                 time_elapsed, i // 20))
-
     writer.add_scalar('train/epoch-loss', running_loss / counts, epoch)
     print(running_loss / counts)
 
@@ -58,7 +57,7 @@ def valid(model, device, epoch, valid_loader, writer):
 
     with torch.no_grad():
 
-        for i, data in enumerate(valid_loader):
+        for i, (data, _) in enumerate(valid_loader):
             data = data.to(device)
 
             n = data.size(0)
@@ -79,17 +78,14 @@ def valid(model, device, epoch, valid_loader, writer):
                 # Loss
                 writer.add_scalar('valid/loss', running_loss / counts, step)
 
+                writer.add_image('generator sample', model.sample_image(device), step)
+
         writer.add_scalar('valid/epoch-loss', running_loss / counts, epoch)
+        print('loss: ', running_loss / counts)
 
 
-def main(model, test=False):
-    writer = SummaryWriter('logs/vae')
-
-    train_set = dataset.BinarizedMNIST(data_dir='../data/', split='train', test=test)
-    valid_set = dataset.BinarizedMNIST(data_dir='../data/', split='valid', test=test)
-
-    train_loader = DataLoader(train_set, batch_size=128, shuffle=True, num_workers=10)
-    valid_loader = DataLoader(valid_set, batch_size=128, shuffle=True, num_workers=10)
+def main(model, train_loader, valid_loader, name='vae'):
+    writer = SummaryWriter('logs/' + name)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -101,9 +97,43 @@ def main(model, test=False):
         train(model, device, epoch, train_loader, optimiser, writer)
         valid(model, device, epoch, valid_loader, writer)
 
-    torch.save(model.state_dict(), 'vae.pth')
+    torch.save(model.state_dict(), name + '.pth')
+
+
+def main_eval(model, test=False):
+    writer = SummaryWriter('logs/vae_test/')
+    valid_set = dataset.BinarizedMNIST(data_dir='../data/', split='valid', test=test)
+    test_set = dataset.BinarizedMNIST(data_dir='../data/', split='test', test=test)
+
+    valid_loader = DataLoader(valid_set, batch_size=128, shuffle=True, num_workers=10)
+    test_loader = DataLoader(test_set, batch_size=128, shuffle=True, num_workers=10)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
+
+    valid(model, device, 1, valid_loader, writer)
+    valid(model, device, 1, test_loader, writer)
 
 
 if __name__ == '__main__':
-    model = models.vae.VariationalAutoEncoder()
-    main(model, test=False)
+    svhn = True
+    test = False
+    batch_size = 64
+    eval = False
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    map = ('cpu' if device == torch.device('cpu') else None)
+    model = models.vae.VariationalAutoEncoder(svhn=svhn)
+
+    if svhn:
+        train_loader, valid_loader, test_loader = data_utils.get_data_loader("../models/svhn", batch_size)
+        name = 'vae_svhn'
+    else:
+        train_set = dataset.BinarizedMNIST(data_dir='../data/', split='train', test=test)
+        valid_set = dataset.BinarizedMNIST(data_dir='../data/', split='valid', test=test)
+        train_loader = DataLoader(train_set, batch_size=128, shuffle=True, num_workers=10)
+        valid_loader = DataLoader(valid_set, batch_size=128, shuffle=True, num_workers=10)
+    if eval:
+        model.load_state_dict(torch.load('vae.pth', map_location=map))
+        main_eval(model, test=test)
+    else:
+        main(model, train_loader, valid_loader, name=name)

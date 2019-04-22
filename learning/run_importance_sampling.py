@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 import utils.dataset as dataset
 
 
-def ll_importance_sample_batch(batch, model, samples):
+def ll_importance_sample_batch(batch, model, samples, device):
     """
     :param batch: tensor whose likelihood is to be evaluated shape : (size_minibatch, D)
     :param model: a VAE
@@ -24,15 +24,15 @@ def ll_importance_sample_batch(batch, model, samples):
         out, mean, logv = model(batch)
         sigma = torch.exp(.5 * logv) + .1e-8
         m = torch.distributions.normal.Normal(torch.tensor([0.0]), torch.tensor([1.0]))
-        samples_value_normal = torch.randn((samples, batch.size()[0], mean.size()[1]))
+        samples_value_normal = torch.randn((samples, batch.size()[0], mean.size()[1])).to(device)
 
         # Get the importance weights
-        proba_q = m.log_prob(samples_value_normal)
+        proba_q = m.log_prob(samples_value_normal.cpu()).to(device)
         aggregated_q = proba_q.sum(dim=2)
 
         # Get the hidden values and their prior proba
         value_z = mean + samples_value_normal * sigma
-        proba_prior_z = m.log_prob(value_z)
+        proba_prior_z = m.log_prob(value_z.cpu()).to(device)
         aggregated_z = proba_prior_z.sum(dim=2)
 
         # Forward pass these hidden values and get the probability of the observed values using the model
@@ -63,7 +63,7 @@ def ll_importance_sample_batch(batch, model, samples):
     return proba_points
 
 
-def main(model, test=False):
+def main(model, test=False, device=torch.device('cpu')):
     valid_set = dataset.BinarizedMNIST(data_dir='../data/', split='valid', test=test)
     valid_loader = DataLoader(valid_set, batch_size=64, shuffle=True, num_workers=10)
 
@@ -76,7 +76,7 @@ def main(model, test=False):
     counts = 0.
     for i, batch in enumerate(valid_loader):
         batch = batch.to(device)
-        prob = ll_importance_sample_batch(batch, model, samples=200)
+        prob = ll_importance_sample_batch(batch, model, samples=200, device=device)
         avg_valid_likelihood += prob.sum()
         counts += prob.shape[0]
 
@@ -84,7 +84,7 @@ def main(model, test=False):
     counts = 0.
     for i, batch in enumerate(test_loader):
         batch = batch.to(device)
-        prob = ll_importance_sample_batch(batch, model, samples=200)
+        prob = ll_importance_sample_batch(batch, model, samples=200, device=device)
         avg_test_likelihood += prob.sum()
         counts += prob.shape[0]
 
@@ -98,4 +98,4 @@ if __name__ == '__main__':
     map = ('cpu' if device == torch.device('cpu') else None)
     model = models.vae.VariationalAutoEncoder()
     model.load_state_dict(torch.load('vae.pth', map_location=map))
-    main(model, test=True)
+    main(model, test=False, device=device)

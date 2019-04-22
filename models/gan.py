@@ -10,10 +10,10 @@ from torch import nn
 import models.estimators as est
 import torch.optim as optim
 import base.classify_svhn as data_utils
-from tqdm import tqdm
 import warnings
 from tensorboardX import SummaryWriter
 from torch.nn.functional import sigmoid
+from torchvision.transforms import Compose, Normalize
 
 
 class GAN(nn.Module):
@@ -45,6 +45,9 @@ class GAN(nn.Module):
 
     def fit(self, train_loader, num_epochs, device, writer, n_unrolls=3):
         self.train()
+        inv_normalize = Compose([Normalize(mean=(0., 0., 0.), std=(2., 2., 2.)),
+                                 Normalize(mean=(-0.5, -0.5, -0.5), std=(1., 1., 1.))
+                                 ])
         unroll_counter = 0.
         discriminator_optim, generator_optim = optim.Adam(params=self.critic.parameters(), lr=3e-4), optim.Adam(
             params=[{'params': self.generator.parameters()}, {'params': self.linear_layer.parameters()}], lr=3e-4)
@@ -91,7 +94,8 @@ class GAN(nn.Module):
                     writer.add_scalar('train/WGAN-penalty', gen_loss, step)
 
                     # Sample, log and save images
-                    image_sample = self(batch_size=1).squeeze(0)
+                    print(self(batch_size=1).shape)
+                    image_sample = inv_normalize(self(batch_size=1).squeeze(0))
                     writer.add_image('Generator samples', image_sample, step)
 
             print("Discriminator WGAN loss after {} epochs: {:.4f}".format(epoch, disc_loss))
@@ -105,5 +109,5 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     gan = GAN(device).to(device)
     batch_size = 64
-    train_loader = data_utils.get_data_loader("svhn", batch_size)
-    gan.fit(train_loader, 5, device, writer)
+    train_loader, valid_loader, test_loader = data_utils.get_data_loader("svhn", batch_size)
+    gan.fit(train_loader, 20, device, writer)

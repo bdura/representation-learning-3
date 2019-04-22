@@ -21,15 +21,3 @@ class BinarizedMNIST(Dataset):
 
     def __getitem__(self, item):
         return torch.tensor(self.data[item]).view(-1, 28, 28).float()
-
-
-class SVHNDataset(Dataset):
-
-    def __init__(self):
-        pass
-
-    def __len__(self):
-        pass
-
-    def __getitem__(self, item):
-        pass

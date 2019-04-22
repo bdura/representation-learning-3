@@ -1,42 +1,70 @@
 import torch
 from torch import nn
+from torchvision.transforms import Compose, Normalize
 
 
 class VariationalAutoEncoder(nn.Module):
 
-    def __init__(self, kappa=1.):
+    def __init__(self, kappa=1., svhn=False):
         super(VariationalAutoEncoder, self).__init__()
+        self.svhn = svhn
 
-        self.activation = nn.ELU()
+        if svhn:
+            self.activation = nn.ReLU()
+            self.encoder_layers = nn.Sequential(
+                nn.Conv2d(3, 32, kernel_size=3),
+                self.activation,
+                nn.AvgPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(32, 64, kernel_size=3),
+                self.activation,
+                nn.AvgPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(64, 256, kernel_size=6),
+                self.activation
+            )
 
-        self.encoder_layers = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=3),
-            self.activation,
-            nn.AvgPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(32, 64, kernel_size=3),
-            self.activation,
-            nn.AvgPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(64, 256, kernel_size=5),
-            self.activation,
-        )
+            self.decoder_layers = nn.Sequential(
+                nn.Conv2d(256, 64, kernel_size=4, padding=4),
+                self.activation,
+                nn.UpsamplingBilinear2d(scale_factor=2),
+                nn.Conv2d(64, 32, kernel_size=3, padding=2),
+                self.activation,
+                nn.UpsamplingBilinear2d(scale_factor=2),
+                nn.Conv2d(32, 16, kernel_size=3, padding=2),
+                self.activation,
+                nn.Conv2d(16, 3, kernel_size=3, padding=2)
+            )
+            self.reconstruction_criterion = nn.MSELoss(reduction="sum")
+        else:
+            self.activation = nn.ELU()
+            self.encoder_layers = nn.Sequential(
+                nn.Conv2d(1, 32, kernel_size=3),
+                self.activation,
+                nn.AvgPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(32, 64, kernel_size=3),
+                self.activation,
+                nn.AvgPool2d(kernel_size=2, stride=2),
+                nn.Conv2d(64, 256, kernel_size=5),
+                self.activation,
+            )
+
+            self.decoder_layers = nn.Sequential(
+                self.activation,
+                nn.Conv2d(256, 64, kernel_size=5, padding=4),
+                self.activation,
+                nn.UpsamplingBilinear2d(scale_factor=2),
+                nn.Conv2d(64, 32, kernel_size=3, padding=2),
+                self.activation,
+                nn.UpsamplingBilinear2d(scale_factor=2),
+                nn.Conv2d(32, 16, kernel_size=3, padding=2),
+                self.activation,
+                nn.Conv2d(16, 1, kernel_size=3, padding=2),
+            )
+            self.reconstruction_criterion = nn.BCELoss(reduction="sum")
+
         self.encoder_mean = nn.Linear(256, 100)
         self.encoder_logv = nn.Linear(256, 100)
 
         self.decoder_input = nn.Linear(100, 256)
-        self.decoder_layers = nn.Sequential(
-            self.activation,
-            nn.Conv2d(256, 64, kernel_size=5, padding=4),
-            self.activation,
-            nn.UpsamplingBilinear2d(scale_factor=2),
-            nn.Conv2d(64, 32, kernel_size=3, padding=2),
-            self.activation,
-            nn.UpsamplingBilinear2d(scale_factor=2),
-            nn.Conv2d(32, 16, kernel_size=3, padding=2),
-            self.activation,
-            nn.Conv2d(16, 1, kernel_size=3, padding=2),
-        )
-
-        self.reconstruction_criterion = nn.BCELoss(reduction="sum")
 
         self.sigmoid = nn.Sigmoid()
         self.kappa = kappa
@@ -51,6 +79,16 @@ class VariationalAutoEncoder(nn.Module):
 
         return mean, logv
 
+    def sample_image(self, device):
+        code = torch.randn((1, 100)).to(device)
+        sample = self.decode(code)
+        if self.svhn:
+            img = (sample / 2.0) + 0.5
+            img = img.squeeze(0)
+        else:
+            img = sample
+        return img
+
     def sample(self, mean, logv):
         sigma = torch.exp(.5 * logv)
 
@@ -62,7 +100,8 @@ class VariationalAutoEncoder(nn.Module):
         x = x.unsqueeze(2).unsqueeze(2)
 
         x = self.decoder_layers(x)
-        x = self.sigmoid(x)
+        if not self.svhn:
+            x = self.sigmoid(x)
 
         return x
 
@@ -78,22 +117,15 @@ class VariationalAutoEncoder(nn.Module):
     def loss(self, x, out, mu, logv):
         # Reconstruction loss
 
-        reconstruction = self.reconstruction_criterion(out.view(-1, 784), x.view(-1, 784)) / mu.shape[0]
-
-        # print()
+        if self.svhn:
+            dim1 = 32 * 32
+        else:
+            dim1 = 28 * 28
+        reconstruction = self.reconstruction_criterion(out.view(-1, dim1), x.view(-1, dim1)) / mu.shape[0]
 
         # KL Divergence
         divergence = 0.5 * (- 1 - logv + mu.pow(2) + logv.exp()).sum(1).mean()
 
-        # divergence = 0.5 * (- 1 + mean.pow(2)).mean()
-        # print('Divergence', divergence.item())
-        # total_loss =  self.kappa * divergence
-        # norm = torch.norm(self.encoder_logv.weight)
-        # total_loss = reconstruction + self.kappa * divergence + 5 * norm
-
         total_loss = reconstruction + self.kappa * divergence
-
-        # print('Total', total_loss.item())
-        # raise(ValueError('Debugging'))
 
         return total_loss, divergence.item(), reconstruction.item()
