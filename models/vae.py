@@ -91,6 +91,27 @@ class VariationalAutoEncoder(nn.Module):
         perturbed_sample = (perturbed_sample / 2.0) + 0.5
         return sample.squeeze(0), perturbed_sample.squeeze(0)
 
+    def interpolation(self):
+
+        z0 = torch.randn(size=(1, 100)).to(self.device)
+        z1 = torch.randn(size=(1, 100)).to(self.device)
+
+        alphas = np.linspace(0., 1., 11)
+
+        interpolation_latent = [
+            (self.decode(alpha * z0 + (1 - alpha) * z1) / 2.0) + 0.5
+            for alpha in alphas
+        ]
+
+        gz0 = self.decode(z0)
+        gz1 = self.decode(z1)
+
+        interpolation_image = [
+            ((alpha * gz0 + (1 - alpha) * gz1) / 2.0) + 0.5 for alpha in alphas
+        ]
+
+        return interpolation_latent, interpolation_image
+
     def sample_image(self, device):
         code = torch.randn((1, 100)).to(device)
         sample = self.decode(code)
