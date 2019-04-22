@@ -11,6 +11,8 @@ import models.estimators as est
 import torch.optim as optim
 import base.classify_svhn as data_utils
 import warnings
+import random
+import numpy as np
 from tensorboardX import SummaryWriter
 from torch.nn.functional import sigmoid
 from torchvision.transforms import Compose, Normalize
@@ -101,6 +103,34 @@ class GAN(nn.Module):
             print("Discriminator WGAN loss after {} epochs: {:.4f}".format(epoch, disc_loss))
 
         torch.save(self.state_dict(), '../learning/gan.pth')
+
+    def perturbation(self, epsilon):
+        sample_vanilla = torch.randn(size=(1, 100)).to(self.device)
+        sample_perturbation = sample_vanilla.clone()
+
+        idx = random.sample(range(100), k=1)[0]
+        sample_perturbation[0, idx] += epsilon
+
+        sample_vanilla = self.linear_layer(sample_vanilla).unsqueeze(2).unsqueeze(2)
+        sample_perturbation = self.linear_layer(sample_perturbation).unsqueeze(2).unsqueeze(2)
+
+        generated_vanilla = self.generator(sample_vanilla)
+        generated_perturbation = self.generator(sample_perturbation)
+
+        return generated_vanilla, generated_perturbation
+
+    def interpolation(self):
+
+        z0 = torch.randn(size=(1, 100)).to(self.device)
+        z1 = torch.randn(size=(1, 100)).to(self.device)
+
+        alphas = np.linspace(0., 1., 11)
+        for alpha in alphas:
+            z2 = alpha * z0 + (1 - alpha) * z1
+
+            z2 = self.linear_layer(z2).unsqueeze(2).unsqueeze(2)
+            generated = self.generator(z2)
+
 
 
 if __name__ == '__main__':
