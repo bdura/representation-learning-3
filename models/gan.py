@@ -125,12 +125,20 @@ class GAN(nn.Module):
         z1 = torch.randn(size=(1, 100)).to(self.device)
 
         alphas = np.linspace(0., 1., 11)
-        for alpha in alphas:
-            z2 = alpha * z0 + (1 - alpha) * z1
 
-            z2 = self.linear_layer(z2).unsqueeze(2).unsqueeze(2)
-            generated = self.generator(z2)
+        interpolation_latent = [
+            self.generator(self.linear_layer(alpha * z0 + (1 - alpha) * z1).unsqueeze(2).unsqueeze(2))
+            for alpha in alphas
+        ]
 
+        gz0 = self.generator(self.linear_layer(z0).unsqueeze(2).unsqueeze(2))
+        gz1 = self.generator(self.linear_layer(z1).unsqueeze(2).unsqueeze(2))
+        
+        interpolation_image = [
+            alpha * gz0 + (1 - alpha) * gz1 for alpha in alphas
+        ]
+
+        return interpolation_latent, interpolation_image
 
 
 if __name__ == '__main__':
