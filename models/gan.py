@@ -9,13 +9,12 @@ class GAN(nn.Module):
     def __init__(self,
                  critic=est.Wasserstein(input_dimension=256, hidden_dimension=100, n_hidden_layers=0, image=True)):
         super(GAN, self).__init__()
-        # TODO : corriger architecture pour SVHN
         self.critic = critic
         self.linear_layer = nn.Sequential(nn.Linear(100, 256),
                                           nn.ELU())
 
         self.generator = nn.Sequential(
-            nn.Conv2d(256, 64, kernel_size=5, padding=4),
+            nn.Conv2d(256, 64, kernel_size=4, padding=4),
             nn.ELU(),
             nn.UpsamplingBilinear2d(scale_factor=2),
             nn.Conv2d(64, 32, kernel_size=3, padding=2),
@@ -23,7 +22,7 @@ class GAN(nn.Module):
             nn.UpsamplingBilinear2d(scale_factor=2),
             nn.Conv2d(32, 16, kernel_size=3, padding=2),
             nn.ELU(),
-            nn.Conv2d(16, 1, kernel_size=3, padding=2)
+            nn.Conv2d(16, 3, kernel_size=3, padding=2)
         )
 
     def forward(self, batch_size):
@@ -45,16 +44,12 @@ class GAN(nn.Module):
 
                 fake_batch = self(batch_size=batch_size)
 
-                # Compute discriminator predictions
-                out_real = self.critic(inputs)
-                out_fake = self.critic(fake_batch)
-
                 # Compute losses
-                disc_loss = self.critic.loss(out_real, out_fake)
+                disc_loss = self.critic.loss(inputs, fake_batch, device)
                 gen_loss = -disc_loss
 
                 # Backprop discriminator, generator
-                disc_loss.backward()
+                disc_loss.backward(retain_graph=True)
                 discriminator_optim.step()
 
                 gen_loss.backward()
@@ -62,6 +57,8 @@ class GAN(nn.Module):
 
                 discriminator_optim.zero_grad()
                 generator_optim.zero_grad()
+
+            print("Discriminator loss after {} epochs: {:.4f}".format(epoch, disc_loss))
 
 
 if __name__ == '__main__':

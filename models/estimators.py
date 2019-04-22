@@ -111,7 +111,6 @@ class Wasserstein(Discriminator):
         self.kappa = kappa
 
     def loss(self, f, g, penalised=True):
-        n = f.size(0)
         device = f.device
 
         objective_f = self(f).mean()
@@ -121,7 +120,7 @@ class Wasserstein(Discriminator):
 
         if penalised:
             # Uniform distribution U[0, 1]
-            a = torch.rand((n, 1)).to(device)
+            a = torch.randn_like(f).to(device)
 
             z = a * f + (1 - a) * g
             z.requires_grad_(True)
