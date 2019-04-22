@@ -120,7 +120,10 @@ class Wasserstein(Discriminator):
 
         if penalised:
             # Uniform distribution U[0, 1]
-            a = torch.randn_like(f).to(device)
+            a = torch.randn(f.shape[0], ).to(device).unsqueeze(1)
+
+            if len(f.shape) > 2:
+                a = a.unsqueeze(2).unsqueeze(2)
 
             z = a * f + (1 - a) * g
             z.requires_grad_(True)

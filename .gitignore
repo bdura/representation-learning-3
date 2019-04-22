@@ -8,5 +8,5 @@
 .autoenv_leave.zsh
 
 notebooks/output/
-
+interactive.pbs
 __pycache__/
