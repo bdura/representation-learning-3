@@ -46,14 +46,6 @@ def train(model, device, epoch, train_loader, optimiser, writer):
             print("loss = {}, div = {}, rec = {}, time = {}, batch = {}".format(loss.item(), div, rec,
                                                                                 time_elapsed, i // 20))
 
-        """
-        if i % int(len(train_loader) ** .5) or i == len(train_loader) - 1:
-            step = epoch * len(train_loader) + i
-
-            # Loss
-            writer.add_scalar('train/loss', running_loss / counts, step)
-            # print(running_loss / counts)
-        """
     writer.add_scalar('train/epoch-loss', running_loss / counts, epoch)
     print(running_loss / counts)
 

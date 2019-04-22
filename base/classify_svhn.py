@@ -18,7 +18,7 @@ image_transform = transforms.Compose([
 def get_data_loader(dataset_location, batch_size):
     trainvalid = torchvision.datasets.SVHN(
         dataset_location, split='test',  # TODO change back
-        download=True,
+        download=False,  # Set to True if not downloaded already
         transform=image_transform
     )
 
@@ -43,7 +43,7 @@ def get_data_loader(dataset_location, batch_size):
     testloader = torch.utils.data.DataLoader(
         torchvision.datasets.SVHN(
             dataset_location, split='test',
-            download=True,
+            download=False,
             transform=image_transform
         ),
         batch_size=batch_size,

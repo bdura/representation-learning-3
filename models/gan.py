@@ -1,8 +1,19 @@
+import sys
+import os
+
+sys.path.append(os.path.abspath('../'))
+
+del sys, os
+
 import torch
 from torch import nn
 import models.estimators as est
 import torch.optim as optim
 import base.classify_svhn as data_utils
+from tqdm import tqdm
+import warnings
+from tensorboardX import SummaryWriter
+from torch.nn.functional import sigmoid
 
 
 class GAN(nn.Module):
@@ -24,6 +35,7 @@ class GAN(nn.Module):
             nn.ELU(),
             nn.Conv2d(16, 3, kernel_size=3, padding=2)
         )
+        self.criterion = nn.BCELoss()
 
     def forward(self, batch_size):
         sample = torch.randn(size=(batch_size, 100))
@@ -31,21 +43,20 @@ class GAN(nn.Module):
         generated = self.generator(sample)
         return generated
 
-    def fit(self, num_epochs, device, batch_size):
+    def fit(self, train_loader, num_epochs, device, writer):
         self.train()
         discriminator_optim, generator_optim = optim.Adam(params=self.critic.parameters()), optim.Adam(
             params=[{'params': self.generator.parameters()}, {'params': self.linear_layer.parameters()}])
-        train_loader = data_utils.get_data_loader("svhn", batch_size)
-        # TODO gérer les loaders valid, test...
         # TODO monitor training (e.g. générer images, metrics)
         for epoch in range(num_epochs):
-            for inputs, _ in train_loader:
+            print("Starting epoch {}...".format(epoch))
+            for i, (inputs, _) in tqdm(enumerate(train_loader)):
                 inputs = inputs.to(device)
 
-                fake_batch = self(batch_size=batch_size)
+                fake_batch = self(batch_size=inputs.shape[0])
 
                 # Compute losses
-                disc_loss = self.critic.loss(inputs, fake_batch, device)
+                disc_loss = self.critic.loss(inputs, fake_batch)
                 gen_loss = -disc_loss
 
                 # Backprop discriminator, generator
@@ -58,10 +69,36 @@ class GAN(nn.Module):
                 discriminator_optim.zero_grad()
                 generator_optim.zero_grad()
 
-            print("Discriminator loss after {} epochs: {:.4f}".format(epoch, disc_loss))
+                if i % 20 == 0:
+                    out_real = sigmoid(self.critic(inputs))
+                    out_fake = sigmoid(self.critic(fake_batch))
+                    fake_labels = torch.zeros_like(out_fake)
+                    real_labels = torch.ones_like(out_real)
+                    clf_loss_fake = self.criterion(out_fake, fake_labels)
+                    clf_loss_real = self.criterion(out_real, real_labels)
+                    clf_loss = (clf_loss_fake + clf_loss_real) / 2
+                    print("cross-entropy loss: {:.4f}, WGAN penalty: {:.4f} after {} batches".
+                          format(clf_loss, disc_loss, i))
+
+                    # Log metrics into tensorboard
+                    step = epoch * len(train_loader) + i
+                    writer.add_scalar('train/bce-loss', clf_loss, step)
+                    writer.add_scalar('train/WGAN-penalty', disc_loss, step)
+
+                    # Sample, log and save images
+                    image_sample = self(batch_size=1).squeeze(0)
+                    writer.add_image('Generator samples', image_sample, step)
+
+            print("Discriminator WGAN loss after {} epochs: {:.4f}".format(epoch, disc_loss))
+
+        torch.save(self.state_dict(), '../learning/gan.pth')
 
 
 if __name__ == '__main__':
+    writer = SummaryWriter('../learning/logs/gan')
+    warnings.filterwarnings("ignore", category=UserWarning)
     gan = GAN()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    gan.fit(5, device, 64)
+    batch_size = 64
+    train_loader = data_utils.get_data_loader("svhn", batch_size)
+    gan.fit(train_loader, 1, device, writer)
