@@ -1,3 +1,10 @@
+import sys
+import os
+
+sys.path.append(os.path.abspath('../'))
+
+del sys, os
+
 import argparse
 import os
 import torchvision
@@ -5,6 +12,8 @@ import torchvision.transforms as transforms
 import torch
 import base.classify_svhn as classify_svhn
 from base.classify_svhn import Classifier
+import numpy as np
+import scipy as scipy
 
 SVHN_PATH = "svhn"
 PROCESS_BATCH_SIZE = 32
@@ -72,13 +81,30 @@ def extract_features(classifier, data_loader):
 
 def calculate_fid_score(sample_feature_iterator,
                         testset_feature_iterator):
-    """
-    To be implemented by you!
-    """
-    raise NotImplementedError(
-        "TO BE IMPLEMENTED."
-        "Part of Assignment 3 Quantitative Evaluations"
+    # Compute all the sample features
+    concatenated_sample_features = np.concatenate(
+        [np.reshape(sample_feature, (-1, 1)) for sample_feature in sample_feature_iterator],
+        axis=1
     )
+
+    # Compute the mean and covariance of samples
+    mu_q = np.mean(concatenated_sample_features, axis=1)
+    sigma_q = np.cov(concatenated_sample_features)
+
+    # Compute all the test features
+    concatenated_testset_features = np.concatenate(
+        [np.reshape(testset_feature, (-1, 1)) for testset_feature in testset_feature_iterator],
+        axis=1
+    )
+
+    # Compute the mean and covariance of samples
+    mu_p = np.mean(concatenated_testset_features, axis=1)
+    sigma_p = np.cov(concatenated_testset_features)
+
+    return round(
+        np.linalg.norm(mu_p - mu_q) ** 2 + np.trace(
+            sigma_p + sigma_q - 2 * scipy.linalg.sqrtm(np.matmul(sigma_p, sigma_q) + np.eye(512, 512) * 10 ** (-7))
+        ), 3)
 
 
 if __name__ == "__main__":

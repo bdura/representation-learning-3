@@ -23,15 +23,24 @@ plt.figure()
 xx = torch.randn(10000)
 f = lambda x: torch.tanh(x * 2 + 1) + x * 0.75
 d = lambda x: (1 - torch.tanh(x * 2 + 1) ** 2) * 2 + 0.75
-plt.hist(f(xx), 100, alpha=0.5, density=1)
-plt.hist(xx, 100, alpha=0.5, density=1)
+plt.hist(f(xx), 100, alpha=0.5, density=1,
+         label='Unknown (empirical)'
+         )
+plt.hist(xx, 100, alpha=0.5, density=1,
+         label='Gaussian (empirical)'
+         )
 plt.xlim(-5, 5)
 
 # exact
 xx = np.linspace(-5, 5, 1000)
 N = lambda x: np.exp(-x ** 2 / 2.) / ((2 * np.pi) ** 0.5)
-plt.plot(f(torch.from_numpy(xx)).numpy(), d(torch.from_numpy(xx)).numpy() ** (-1) * N(xx))
-plt.plot(xx, N(xx))
+plt.plot(f(torch.from_numpy(xx)).numpy(), d(torch.from_numpy(xx)).numpy() ** (-1) * N(xx),
+         label='Unknown (exact)'
+         )
+plt.plot(xx, N(xx),
+         label='Gaussian (exact)'
+         )
+plt.legend()
 plt.show()
 
 
@@ -65,10 +74,6 @@ D_x = critic(torch_xx).detach().numpy()
 f_0_x = N(xx)[:, np.newaxis]
 
 estimated = f_0_x * D_x / (1 - D_x)
-#
-# plt.plot(xx, estimated)
-# plt.plot(xx, N(xx))
-# plt.show()
 
 r = D_x
 plt.figure(figsize=(8, 4))
@@ -80,6 +85,6 @@ estimate = estimated
 plt.subplot(1, 2, 2)
 plt.plot(xx, estimate)
 plt.plot(f(torch.from_numpy(xx)).numpy(), d(torch.from_numpy(xx)).numpy() ** (-1) * N(xx))
-plt.legend(['Estimated', 'True'])
-plt.title('Estimated vs True')
+plt.legend(['Estimation', 'True'])
+plt.title('Unknown density')
 plt.show()
