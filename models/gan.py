@@ -23,18 +23,19 @@ class GAN(nn.Module):
         super(GAN, self).__init__()
         self.critic = critic
         self.linear_layer = nn.Sequential(nn.Linear(100, 256),
-                                          nn.ELU())
+                                          nn.ReLU())
         self.device = device
         self.generator = nn.Sequential(
             nn.Conv2d(256, 64, kernel_size=4, padding=4),
-            nn.ELU(),
+            nn.ReLU(),
             nn.UpsamplingBilinear2d(scale_factor=2),
             nn.Conv2d(64, 32, kernel_size=3, padding=2),
-            nn.ELU(),
+            nn.ReLU(),
             nn.UpsamplingBilinear2d(scale_factor=2),
             nn.Conv2d(32, 16, kernel_size=3, padding=2),
-            nn.ELU(),
-            nn.Conv2d(16, 3, kernel_size=3, padding=2)
+            nn.ReLU(),
+            nn.Conv2d(16, 3, kernel_size=3, padding=2),
+            nn.Tanh()
         )
         self.criterion = nn.BCELoss()
 
@@ -129,12 +130,13 @@ class GAN(nn.Module):
         alphas = np.linspace(0., 1., 11)
 
         interpolation_latent = [
-            (self.generator(self.linear_layer(alpha * z0 + (1 - alpha) * z1).unsqueeze(2).unsqueeze(2)) / 2.0) + 0.5
+            ((self.generator(
+                self.linear_layer(alpha * z0 + (1 - alpha) * z1).unsqueeze(2).unsqueeze(2)) / 2.0) + 0.5).squeeze(0)
             for alpha in alphas
         ]
 
-        gz0 = self.generator(self.linear_layer(z0).unsqueeze(2).unsqueeze(2))
-        gz1 = self.generator(self.linear_layer(z1).unsqueeze(2).unsqueeze(2))
+        gz0 = (self.generator(self.linear_layer(z0).unsqueeze(2).unsqueeze(2))).squeeze(0)
+        gz1 = (self.generator(self.linear_layer(z1).unsqueeze(2).unsqueeze(2))).squeeze(0)
 
         interpolation_image = [
             ((alpha * gz0 + (1 - alpha) * gz1) / 2.0) + 0.5 for alpha in alphas
@@ -142,12 +144,15 @@ class GAN(nn.Module):
 
         return interpolation_latent, interpolation_image
 
+    def sample_image(self):
+        return ((self(1) / 2.0) + 0.5).squeeze(0)
+
 
 if __name__ == '__main__':
     writer = SummaryWriter('../learning/logs/gan')
     warnings.filterwarnings("ignore", category=UserWarning)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     gan = GAN(device).to(device)
-    batch_size = 128
+    batch_size = 64
     train_loader, valid_loader, test_loader = data_utils.get_data_loader("svhn", batch_size)
-    gan.fit(train_loader, 50, device, writer)
+    gan.fit(train_loader, 40, device, writer)

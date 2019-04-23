@@ -122,7 +122,7 @@ if __name__ == '__main__':
     eval = False
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     map = ('cpu' if device == torch.device('cpu') else None)
-    model = models.vae.VariationalAutoEncoder(svhn=svhn)
+    model = models.vae.VariationalAutoEncoder(svhn=svhn, kappa=1.2)
 
     if svhn:
         train_loader, valid_loader, test_loader = data_utils.get_data_loader("../models/svhn", batch_size)
