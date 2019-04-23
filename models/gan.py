@@ -106,10 +106,10 @@ class GAN(nn.Module):
     def perturb(self, idx, std):
 
         sample_vanilla = torch.randn(size=(1, 100))
-        sample_perturbation = sample_vanilla.clone()
-
+        zeros = torch.zeros_like(sample_vanilla)
         epsilon = torch.randn(1) * std
-        sample_perturbation[0, idx] += epsilon
+        zeros[0, idx] = epsilon
+        sample_perturbation = sample_vanilla + zeros
 
         sample_vanilla = self.linear_layer(sample_vanilla).unsqueeze(2).unsqueeze(2)
         sample_perturbation = self.linear_layer(sample_perturbation).unsqueeze(2).unsqueeze(2)
@@ -120,7 +120,7 @@ class GAN(nn.Module):
         generated_vanilla = (generated_vanilla / 2.0) + 0.5
         generated_perturbation = (generated_perturbation / 2.0) + 0.5
 
-        return generated_vanilla, generated_perturbation
+        return generated_vanilla.squeeze(0), generated_perturbation.squeeze(0)
 
     def interpolation(self):
 
